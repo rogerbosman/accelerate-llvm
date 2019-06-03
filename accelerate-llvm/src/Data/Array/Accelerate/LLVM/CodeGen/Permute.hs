@@ -25,32 +25,34 @@ module Data.Array.Accelerate.LLVM.CodeGen.Permute (
 
 ) where
 
-import Data.Array.Accelerate.AST
-import Data.Array.Accelerate.Analysis.Match
-import Data.Array.Accelerate.Array.Sugar                            hiding ( Foreign )
-import Data.Array.Accelerate.Product
-import Data.Array.Accelerate.Trafo
-import Data.Array.Accelerate.Type
+import           Data.Array.Accelerate.Analysis.Match
+import           Data.Array.Accelerate.Array.Sugar              hiding (Foreign)
+import           Data.Array.Accelerate.AST
+import           Data.Array.Accelerate.Product
+import           Data.Array.Accelerate.Trafo
+import           Data.Array.Accelerate.Type
 
-import Data.Array.Accelerate.LLVM.CodeGen.Environment
-import Data.Array.Accelerate.LLVM.CodeGen.Exp
-import Data.Array.Accelerate.LLVM.CodeGen.IR
-import Data.Array.Accelerate.LLVM.CodeGen.Monad
-import Data.Array.Accelerate.LLVM.CodeGen.Sugar
-import Data.Array.Accelerate.LLVM.CodeGen.Type
-import Data.Array.Accelerate.LLVM.Foreign
+import           Data.Array.Accelerate.LLVM.CodeGen.Environment
+import           Data.Array.Accelerate.LLVM.CodeGen.Exp
+import           Data.Array.Accelerate.LLVM.CodeGen.IR
+import           Data.Array.Accelerate.LLVM.CodeGen.Monad
+import           Data.Array.Accelerate.LLVM.CodeGen.Sugar
+import           Data.Array.Accelerate.LLVM.CodeGen.Type
+import           Data.Array.Accelerate.LLVM.Foreign
 
-import LLVM.AST.Type.AddrSpace
-import LLVM.AST.Type.Instruction
-import LLVM.AST.Type.Instruction.Atomic
-import LLVM.AST.Type.Instruction.RMW                                as RMW
-import LLVM.AST.Type.Instruction.Volatile
-import LLVM.AST.Type.Operand
-import LLVM.AST.Type.Representation
+import           LLVM.AST.Type.AddrSpace
+import           LLVM.AST.Type.Instruction
+import           LLVM.AST.Type.Instruction.Atomic
+import           LLVM.AST.Type.Instruction.RMW                  as RMW
+import           LLVM.AST.Type.Instruction.Volatile
+import           LLVM.AST.Type.Operand
+import           LLVM.AST.Type.Representation
 
-import Control.Applicative
-import Data.Constraint                                              ( withDict )
-import Prelude
+import           Control.Applicative
+import           Data.Constraint                                (withDict)
+import           Prelude
+
+import           Debug.Trace
 
 
 -- | A forward permutation might be specialised to use atomic instructions to
@@ -96,9 +98,10 @@ llvmOfPermuteFun fun aenv = IRPermuteFun{..}
       -- different threads.
       --
       | Lam (Lam (Body body)) <- fun
-      , TypeRscalar{}         <- eltType @e
+      -- , TypeRscalar{}         <- eltType @e
       , Just body'            <- strengthenE latest body
       , fun'                  <- llvmOfFun1 (Lam (Body body')) aenv
+      -- = trace "In the good just!" $ Just (Exchange, fun')
       = Just (Exchange, fun')
 
       -- LLVM natively supports atomic operations on integral types only.
@@ -115,9 +118,11 @@ llvmOfPermuteFun fun aenv = IRPermuteFun{..}
       , Just (rmw, x)         <- rmwOp body
       , Just x'               <- strengthenE latest x
       , fun'                  <- llvmOfFun1 (Lam (Body x')) aenv
+      -- = trace "In the bad just!" $ Just (rmw, fun')
       = Just (rmw, fun')
 
       | otherwise
+      -- = trace "In the Nothing!" $ Nothing
       = Nothing
 
     rmwOp :: DelayedOpenExp (((),e),e) aenv e -> Maybe (RMWOperation, DelayedOpenExp (((),e),e) aenv e)
@@ -323,4 +328,3 @@ atomicCAS_cmp' t i cmp addr val = withDict (singleElt t) $ do
   _     <- phi' test old [(ir t start,top), (ir t next',bot)]
 
   setBlock exit
-
