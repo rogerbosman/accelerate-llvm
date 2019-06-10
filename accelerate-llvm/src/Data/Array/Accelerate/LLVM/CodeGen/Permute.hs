@@ -101,8 +101,8 @@ llvmOfPermuteFun fun aenv = IRPermuteFun{..}
       -- , TypeRscalar{}         <- eltType @e
       , Just body'            <- strengthenE latest body
       , fun'                  <- llvmOfFun1 (Lam (Body body')) aenv
-      -- = trace "In the good just!" $ Just (Exchange, fun')
       = Just (Exchange, fun')
+      -- = trace "In the good just!" $ Just (Exchange, fun')
 
       -- LLVM natively supports atomic operations on integral types only.
       -- However different targets may support atomic instructions on other
